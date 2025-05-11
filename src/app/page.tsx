@@ -20,7 +20,7 @@ const features = [
   {
     icon: "🧠",
     title: "Home",
-    description: "Save Your Previous Moments",
+    description: "Landing Page",
     link: "",
   },
   {

@@ -18,7 +18,10 @@ interface Task {
   completedSessions: number;
   createdAt: number;
   userId: string;
+  tags: string[];
 }
+
+const DEFAULT_TAGS = ["Urgent", "Important", "Optional", "Deep Work", "Quick Win"];
 
 export default function TasksPage() {
   const { user } = useUser();
@@ -27,6 +30,7 @@ export default function TasksPage() {
     name: "",
     totalSessions: 2,
     dueDate: "",
+    tags: [] as string[],
   });
   const [isLoading, setIsLoading] = useState(true);
   const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
@@ -35,6 +39,8 @@ export default function TasksPage() {
   const [showDeletedModal, setShowDeletedModal] = useState(false);
   const [loadingCompleted, setLoadingCompleted] = useState(false);
   const [loadingDeleted, setLoadingDeleted] = useState(false);
+  const [addingTask, setAddingTask] = useState(false);
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -99,14 +105,13 @@ export default function TasksPage() {
     fetchDeletedTasks();
   };
 
-  // Add this function to check if all required fields are filled
   const isFormValid = () => {
     const now = new Date();
     const selectedDate = newTask.dueDate ? new Date(newTask.dueDate) : null;
     return (
-      newTask.name.trim() !== "" && 
-      newTask.totalSessions > 0 && 
-      selectedDate !== null && 
+      newTask.name.trim() !== "" &&
+      newTask.totalSessions > 0 &&
+      selectedDate !== null &&
       selectedDate > now
     );
   };
@@ -114,7 +119,7 @@ export default function TasksPage() {
   const addTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !newTask.name.trim()) return;
-
+    setAddingTask(true);
     const task: Task = {
       id: Date.now().toString(),
       name: newTask.name,
@@ -122,16 +127,18 @@ export default function TasksPage() {
       dueDate: newTask.dueDate || undefined,
       completedSessions: 0,
       createdAt: Date.now(),
-      userId: user.id
+      userId: user.id,
+      tags: newTask.tags,
     };
-
     try {
       const taskRef = doc(db, `users/${user.id}/tasks`, task.id);
       await setDoc(taskRef, task);
       setTasks([task, ...tasks]);
-      setNewTask({ name: "", totalSessions: 2, dueDate: "" });
+      setNewTask({ name: "", totalSessions: 2, dueDate: "", tags: [] });
     } catch (error) {
       console.error("Error adding task:", error);
+    } finally {
+      setAddingTask(false);
     }
   };
 
@@ -161,6 +168,7 @@ export default function TasksPage() {
 
   const deleteTask = async (taskId: string) => {
     if (!user) return;
+    setDeletingTaskId(taskId);
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
     try {
@@ -171,6 +179,8 @@ export default function TasksPage() {
       fetchDeletedTasks();
     } catch (error) {
       console.error("Error deleting task:", error);
+    } finally {
+      setDeletingTaskId(null);
     }
   };
 
@@ -200,6 +210,14 @@ export default function TasksPage() {
         </div>
       )}
       <main className="flex-1 container mx-auto px-4 py-8 flex flex-col items-center">
+        {addingTask && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+            <div className="bg-white p-8 rounded-xl shadow-2xl flex flex-col items-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500 border-b-4 mb-4"></div>
+              <div className="text-lg font-semibold text-blue-700">Adding your task...</div>
+            </div>
+          </div>
+        )}
         <div className="max-w-4xl mx-auto w-full">
           <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">Task Management</h1>
           <div className="flex justify-end gap-4 mb-4">
@@ -256,18 +274,48 @@ export default function TasksPage() {
                   <p className="text-red-500 text-xs mt-1">Please select a future date and time</p>
                 )}
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tags
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {DEFAULT_TAGS.map(tag => (
+                    <label key={tag} className={`px-2 py-1 rounded-full text-xs font-semibold cursor-pointer border ${newTask.tags.includes(tag) ? "bg-blue-100 border-blue-400 text-blue-700" : "bg-gray-100 border-gray-300 text-gray-600"}`}>
+                      <input
+                        type="checkbox"
+                        className="mr-1 accent-blue-600"
+                        checked={newTask.tags.includes(tag)}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setNewTask({ ...newTask, tags: [...newTask.tags, tag] });
+                          } else {
+                            setNewTask({ ...newTask, tags: newTask.tags.filter(t => t !== tag) });
+                          }
+                        }}
+                      />
+                      {tag}
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
             <button
               type="submit"
-              disabled={!isFormValid()}
+              disabled={!isFormValid() || addingTask}
               className={`mt-4 w-full py-2 px-4 rounded-md transition-colors flex items-center justify-center ${
-                isFormValid()
+                isFormValid() && !addingTask
                   ? "bg-blue-600 text-white hover:bg-blue-700"
                   : "bg-gray-300 text-gray-500 cursor-not-allowed"
               }`}
             >
-              <Plus className="w-5 h-5 mr-2" />
-              Add Task
+              {addingTask ? (
+                <span className="flex items-center"><span className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></span>Adding...</span>
+              ) : (
+                <>
+                  <Plus className="w-5 h-5 mr-2" />
+                  Add Task
+                </>
+              )}
             </button>
           </form>
 
@@ -286,7 +334,7 @@ export default function TasksPage() {
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">
                         {task.name}
                       </h3>
-                      <div className="flex items-center space-x-4 text-sm text-gray-500">
+                      <div className="flex items-center space-x-4 text-sm text-gray-500 mb-2">
                         <div className="flex items-center">
                           <Clock className="w-4 h-4 mr-1" />
                           {task.totalSessions} sessions
@@ -298,6 +346,14 @@ export default function TasksPage() {
                           </div>
                         )}
                       </div>
+                      {/* Tags */}
+                      {task.tags && task.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {task.tags.map(tag => (
+                            <span key={tag} className={`px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200`}>{tag}</span>
+                          ))}
+                        </div>
+                      )}
                       <div className="mt-4">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm text-gray-600">
@@ -332,8 +388,13 @@ export default function TasksPage() {
                       <button
                         onClick={() => deleteTask(task.id)}
                         className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200"
+                        disabled={deletingTaskId === task.id}
                       >
-                        <Trash2 className="w-5 h-5" />
+                        {deletingTaskId === task.id ? (
+                          <span className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-red-500"></span>
+                        ) : (
+                          <Trash2 className="w-5 h-5" />
+                        )}
                       </button>
                     </div>
                   </div>

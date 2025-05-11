@@ -103,39 +103,39 @@ export default function ChatPopup() {
   if (!user) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-8 right-8 z-50">
       {open ? (
-        <div className="w-80 bg-white rounded-xl shadow-2xl border border-gray-200 flex flex-col">
-          <div className="flex items-center justify-between px-4 py-2 border-b bg-blue-600 rounded-t-xl">
-            <span className="flex items-center gap-2 text-white font-semibold">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-rose-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="w-[420px] h-[600px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col">
+          <div className="flex items-center justify-between px-6 py-3 border-b bg-blue-600 rounded-t-2xl">
+            <span className="flex items-center gap-2 text-white font-semibold text-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-rose-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="#f43f5e" />
                 <text x="12" y="16" textAnchor="middle" fontSize="10" fill="white" fontFamily="Arial">FF</text>
               </svg>
               FocusFlow AI
             </span>
-            <button onClick={() => setOpen(false)} className="text-white text-lg hover:text-gray-300">×</button>
+            <button onClick={() => setOpen(false)} className="text-white text-2xl hover:text-gray-300">×</button>
           </div>
           {/* Loading bar for AI response */}
           {aiLoading && (
             <div className="h-1 bg-gradient-to-r from-blue-400 via-blue-600 to-blue-400 animate-pulse rounded-t" style={{ width: '100%' }} />
           )}
-          <div className="flex-1 overflow-y-auto p-4 space-y-2" style={{ maxHeight: 320 }}>
+          <div className="flex-1 overflow-y-auto p-6 space-y-3" style={{ maxHeight: 480 }}>
             {messages.slice(1).map((msg, i) => (
-              <div key={i} className={`text-sm p-2 rounded-lg max-w-[90%] ${msg.role === "user" ? "bg-blue-100 text-right ml-8" : "bg-gray-100 text-left mr-8"}`}>{msg.content}</div>
+              <div key={i} className={`text-base p-3 rounded-xl max-w-[90%] ${msg.role === "user" ? "bg-blue-100 text-right ml-16" : "bg-gray-100 text-left mr-16"}`}>{msg.content}</div>
             ))}
             <div ref={messagesEndRef} />
           </div>
-          <form onSubmit={handleSend} className="flex border-t p-2 bg-gray-50">
+          <form onSubmit={handleSend} className="flex border-t p-4 bg-gray-50 gap-2">
             <input
               type="text"
-              className="flex-1 px-2 py-1 rounded border border-gray-300 focus:outline-none"
+              className="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
               placeholder="Ask something..."
               value={input}
               onChange={e => setInput(e.target.value)}
               disabled={loading}
             />
-            <button type="submit" className="ml-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700" disabled={loading || !input.trim()}>
+            <button type="submit" className="ml-2 px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-base font-semibold" disabled={loading || !input.trim()}>
               Send
             </button>
           </form>
@@ -143,13 +143,12 @@ export default function ChatPopup() {
       ) : (
         <button
           onClick={() => setOpen(true)}
-          className="bg-blue-600 text-white rounded-full shadow-lg p-4 hover:bg-blue-700 focus:outline-none flex items-center justify-center"
+          className="bg-blue-600 text-white rounded-full shadow-lg p-5 hover:bg-blue-700 focus:outline-none flex items-center justify-center"
           title="AI Task Chat"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 20h9" />
-            <circle cx="12" cy="7" r="4" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 20h.01" />
+          {/* New chat bubble icon */}
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12c0-4.556 4.694-8.25 10.5-8.25s10.5 3.694 10.5 8.25-4.694 8.25-10.5 8.25c-1.13 0-2.22-.13-3.24-.37a.75.75 0 0 0-.53.04l-3.32 1.66a.75.75 0 0 1-1.07-.85l.47-2.35a.75.75 0 0 0-.22-.7C3.14 15.13 2.25 13.64 2.25 12Z" />
           </svg>
         </button>
       )}

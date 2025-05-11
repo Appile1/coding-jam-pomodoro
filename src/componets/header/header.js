@@ -60,66 +60,56 @@ export default function Header() {
   };
 
   return (
-    <header
-      className={` top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out ${
-        isScrolled ? "bg-white shadow-lg py-2" : "bg-white py-4"
-      }`}
-    >
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2 group">
-            <div className="relative w-12 h-12 overflow-hidden rounded-full shadow-md group-hover:shadow-lg transition-shadow duration-300">
-              <Image
-                src="/title.png"
-                alt="FocusFlow Logo"
-                width={48}
-                height={48}
-                sizes="48px"
-                className="transition-transform duration-300 group-hover:scale-105"
-                priority
-              />
-            </div>
-            <span className="text-gray-800 text-xl font-bold group-hover:text-blue-600 transition-colors duration-300">
-              FocusFlow
-            </span>
-          </Link>
-
-          <nav className="hidden md:flex space-x-8">
-            {navItems.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="text-gray-600 hover:text-blue-600 transition-colors duration-300 relative group"
-              >
-                <span className="relative z-10">{item.name}</span>
-                <span className="absolute left-0 bottom-0 w-full h-0.5 bg-blue-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></span>
-              </Link>
-            ))}
-          </nav>
-
-          <div className="hidden md:block">
-            <SignedIn>
-              <UserButton />
-            </SignedIn>
-            <SignedOut>
-              <Link href="/signup">
-                <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
-                  <LogIn className="inline-block mr-2" size={18} />
-                  Sign In
-                </button>
-              </Link>
-            </SignedOut>
+    <header className="sticky top-0 z-40 bg-white shadow-md border-b border-gray-200 w-full">
+      <div className="container mx-auto px-4 flex items-center justify-between py-3">
+        <Link href="/" className="flex items-center space-x-2 group">
+          <div className="relative w-10 h-10 overflow-hidden rounded-full shadow-md group-hover:shadow-lg transition-shadow duration-300">
+            <Image
+              src="/title.png"
+              alt="FocusFlow Logo"
+              width={40}
+              height={40}
+              sizes="40px"
+              className="transition-transform duration-300 group-hover:scale-105"
+              priority
+            />
           </div>
-
-          <button
-            className="md:hidden text-gray-600 hover:text-blue-600 transition-colors duration-300"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          <span className="text-blue-700 text-2xl font-bold group-hover:text-blue-600 transition-colors duration-300">
+            FocusFlow
+          </span>
+        </Link>
+        <nav className="hidden md:flex space-x-8">
+          {navItems.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              className="text-gray-600 hover:text-blue-600 transition-colors duration-300 relative group"
+            >
+              <span className="relative z-10">{item.name}</span>
+              <span className="absolute left-0 bottom-0 w-full h-0.5 bg-blue-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></span>
+            </Link>
+          ))}
+        </nav>
+        <div className="hidden md:block">
+          <SignedIn>
+            <UserButton />
+          </SignedIn>
+          <SignedOut>
+            <Link href="/signup">
+              <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                <LogIn className="inline-block mr-2" size={18} />
+                Sign In
+              </button>
+            </Link>
+          </SignedOut>
         </div>
+        <button
+          className="md:hidden text-gray-600 hover:text-blue-600 transition-colors duration-300"
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+        >
+          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
       </div>
-
       {/* Mobile menu */}
       <div
         ref={sidebarRef}

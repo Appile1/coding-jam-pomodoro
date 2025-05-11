@@ -32,6 +32,18 @@ const MOODS = {
   BLOCKED: "blocked",
 };
 
+const TAG_COLORS = {
+  Urgent: "bg-red-100 text-red-700 border-red-200",
+  Important: "bg-orange-100 text-orange-700 border-orange-200",
+  Optional: "bg-gray-100 text-gray-700 border-gray-300",
+  "Deep Work": "bg-indigo-100 text-indigo-700 border-indigo-200",
+  "Quick Win": "bg-green-100 text-green-700 border-green-200",
+};
+
+function getTagColor(tag: string) {
+  return TAG_COLORS[tag as keyof typeof TAG_COLORS] || "bg-blue-100 text-blue-700 border-blue-200";
+}
+
 interface Task {
   id: string;
   name: string;
@@ -41,6 +53,7 @@ interface Task {
   totalSessions: number;
   createdAt: number;
   userId: string;
+  tags?: string[];
 }
 
 export default function PomodoroTimer() {
@@ -678,6 +691,21 @@ export default function PomodoroTimer() {
                             <span className="font-medium text-gray-800">{task.name}</span>
                             <span className="text-xs text-gray-500">{task.completedSessions}/{task.totalSessions}</span>
                           </div>
+                          {/* Tags */}
+                          {task.tags && task.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-1 mb-1">
+                              {task.tags.map(tag => (
+                                <span key={tag} className={`px-2 py-1 rounded-full text-xs font-semibold border ${getTagColor(tag)}`}>{tag}</span>
+                              ))}
+                            </div>
+                          )}
+                          {/* Due Date */}
+                          {task.dueDate && (
+                            <div className="text-xs text-blue-600 mb-1">Due: {format(new Date(task.dueDate), "MMM d, yyyy h:mm a")}</div>
+                          )}
+                          {/* Sessions Remaining */}
+                          <div className="text-xs text-gray-500 mb-1">{task.totalSessions - task.completedSessions} sessions left</div>
+                          {/* Progress Bar */}
                           <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
                             <div
                               className="bg-blue-500 h-1 rounded-full transition-all duration-300"
@@ -716,6 +744,8 @@ export default function PomodoroTimer() {
                         .map(task => (
                           <option key={task.id} value={task.id}>
                             {task.name} ({task.completedSessions}/{task.totalSessions} sessions)
+                            {task.dueDate ? `, Due: ${format(new Date(task.dueDate), "MMM d, yyyy h:mm a")}` : ""}
+                            {task.tags && task.tags.length > 0 ? `, Tags: ${task.tags.join(", ")}` : ""}
                           </option>
                         ))}
                     </select>
