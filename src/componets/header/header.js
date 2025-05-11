@@ -8,6 +8,8 @@ import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 
 const navItems = [
   { name: "Home", href: "/" },
+  { name: "Tasks", href: "/tasks" },
+  { name: "Calendar", href: "/calendar" },
   { name: "Notes", href: "/notes" },
   { name: "Leaderboard", href: "/leaderboard" },
   { name: "PomodoroTimer", href: "/promodoroTimer" },

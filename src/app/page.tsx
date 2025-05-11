@@ -14,18 +14,30 @@ const features = [
   //   description: "Create and study flashcards for efficient learning.",
   //   link: "generate",
   // },
-  // {
-  //   icon: "🧠",
-  //   title: "Memory",
-  //   description: "Save Your Previous Moments",
-  //   link: "memory",
-  // },
-  // {
-  //   icon: "🖊️",
-  //   title: "Notes",
-  //   description: "Take and organize notes with ease.",
-  //   link: "notes",
-  // },
+  {
+    icon: "🧠",
+    title: "Home",
+    description: "Save Your Previous Moments",
+    link: "",
+  },
+  {
+    icon: "📋",
+    title: "Tasks",
+    description: "Manage your tasks and track progress with Pomodoro sessions",
+    link: "tasks",
+  },
+  {
+    icon: "📅",
+    title: "Calendar",
+    description: "View your daily schedule and focus sessions",
+    link: "calendar",
+  },
+  {
+    icon: "🖊️",
+    title: "Notes",
+    description: "Take and organize notes with ease.",
+    link: "notes",
+  },
   {
     icon: "🏆",
     title: "Leaderboard",

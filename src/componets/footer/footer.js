@@ -2,7 +2,7 @@ import React from "react";
 import { LinkedIn, GitHub, Twitter, Instagram } from "@mui/icons-material";
 
 const socialLinks = [
-  { icon: LinkedIn, href: "https://www.linkedin.com" },
+  { icon: LinkedIn, href: "https://www.linkedin.com/in/m-ahmad-siddique" },
   { icon: GitHub, href: "https://www.github.com" },
   { icon: Twitter, href: "https://www.twitter.com" },
   { icon: Instagram, href: "https://www.instagram.com" },
