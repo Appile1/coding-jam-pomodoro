@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
 import { collection, doc, setDoc, getDocs, updateDoc, deleteDoc, query, orderBy } from "firebase/firestore";
 import { db } from "../firebase";
@@ -41,6 +41,22 @@ export default function TasksPage() {
   const [loadingDeleted, setLoadingDeleted] = useState(false);
   const [addingTask, setAddingTask] = useState(false);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+  const [showAllTasks, setShowAllTasks] = useState(false);
+  const today = new Date();
+  const filteredTasks = showAllTasks
+    ? tasks
+    : tasks.filter(task => {
+        if (!task.dueDate) return false;
+        const due = new Date(task.dueDate);
+        return (
+          due.getFullYear() === today.getFullYear() &&
+          due.getMonth() === today.getMonth() &&
+          due.getDate() === today.getDate()
+        );
+      });
+  const [rescheduleTask, setRescheduleTask] = useState<Task | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const rescheduleInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -200,6 +216,30 @@ export default function TasksPage() {
     }
   };
 
+  // Helper to check if a task is overdue
+  const isTaskOverdue = (task: Task) => {
+    if (!task.dueDate) return false;
+    return new Date(task.dueDate) < new Date();
+  };
+
+  const handleReschedule = (task: Task) => {
+    setRescheduleTask(task);
+    setRescheduleDate(task.dueDate ? task.dueDate.slice(0, 16) : "");
+  };
+
+  const confirmReschedule = async () => {
+    if (!user || !rescheduleTask || !rescheduleDate) return;
+    try {
+      const taskRef = doc(db, `users/${user.id}/tasks`, rescheduleTask.id);
+      await updateDoc(taskRef, { dueDate: rescheduleDate });
+      setTasks(tasks.map(t => t.id === rescheduleTask.id ? { ...t, dueDate: rescheduleDate } : t));
+      setRescheduleTask(null);
+      setRescheduleDate("");
+    } catch (error) {
+      console.error("Error rescheduling task:", error);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
@@ -226,6 +266,12 @@ export default function TasksPage() {
             </button>
             <button onClick={() => setShowDeletedModal(true)} className="px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 font-medium shadow">
               View Deleted Tasks
+            </button>
+            <button
+              onClick={() => setShowAllTasks(v => !v)}
+              className="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 font-medium shadow"
+            >
+              {showAllTasks ? "Show Today's Tasks" : "Show All Tasks"}
             </button>
           </div>
           {/* Add Task Form */}
@@ -321,13 +367,13 @@ export default function TasksPage() {
 
           {/* Task List */}
           <div className="space-y-4">
-            {isLoading ? null : tasks.length === 0 ? (
+            {isLoading ? null : filteredTasks.length === 0 ? (
               <div className="text-center py-8 text-gray-500">No tasks yet. Add your first task above!</div>
             ) : (
-              tasks.map((task) => (
+              filteredTasks.map((task) => (
                 <div
                   key={task.id}
-                  className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
+                  className={`bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow ${isTaskOverdue(task) ? "opacity-60 line-through" : ""}`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -396,6 +442,9 @@ export default function TasksPage() {
                           <Trash2 className="w-5 h-5" />
                         )}
                       </button>
+                      {isTaskOverdue(task) && (
+                        <button className="ml-2 px-2 py-1 text-xs bg-yellow-200 text-yellow-800 rounded hover:bg-yellow-300 border border-yellow-300" onClick={() => handleReschedule(task)}>Reschedule</button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -447,6 +496,41 @@ export default function TasksPage() {
               )}
               <div className="text-xs text-gray-400 mt-4">Tasks are permanently deleted after 24 hours.</div>
             </Modal>
+          )}
+          {/* Reschedule Modal */}
+          {rescheduleTask && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+              <div className="bg-white p-6 rounded-xl shadow-2xl flex flex-col items-center min-w-[300px]">
+                <h2 className="text-lg font-bold mb-4 text-blue-700">Reschedule Task</h2>
+                <div className="mb-4 w-full">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">New Due Date</label>
+                  <input
+                    ref={rescheduleInputRef}
+                    type="datetime-local"
+                    value={rescheduleDate}
+                    onChange={e => setRescheduleDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min={new Date().toISOString().slice(0, 16)}
+                    required
+                  />
+                </div>
+                <div className="flex gap-4 mt-2">
+                  <button
+                    onClick={confirmReschedule}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold"
+                    disabled={!rescheduleDate}
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    onClick={() => setRescheduleTask(null)}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 font-semibold"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </main>

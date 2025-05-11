@@ -4,7 +4,7 @@ import "./globals.css";
 import Header from "../componets/header/header.js";
 import { ClerkProvider } from "@clerk/nextjs";
 import Footer from "../componets/footer/footer.js";
-import ChatPopup from "../componets/ChatPopup.jsx";
+import ChatPopup from "../componets/chatPopup/chatPopup";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,7 +24,6 @@ export default function RootLayout({
       <html lang="en">
         <body className={inter.className}>
           <main style={{ flex: 1 }}>{children}</main>
-          <ChatPopup />
         </body>
       </html>
     </ClerkProvider>

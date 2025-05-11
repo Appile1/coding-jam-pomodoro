@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import Header from "@/componets/header/header";
 import Footer from "@/componets/footer/footer";
 import { useUser } from "@clerk/nextjs";
-import ChatPopup from "@/componets/ChatPopup";
+import ChatPopup from "@/componets/chatPopup/chatPopup";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase";
 

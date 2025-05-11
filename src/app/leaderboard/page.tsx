@@ -18,6 +18,7 @@ import { useUser } from "@clerk/nextjs";
 type UserData = {
   id: string;
   name: string;
+  username?: string;
   timeStudied: number;
   photoUrl: string;
 };
@@ -79,6 +80,7 @@ export default function Leaderboard() {
         const data: UserData[] = querySnapshot.docs.map((doc, index) => ({
           id: doc.id,
           name: doc.data().name || "Anonymous",
+          username: doc.data().username || "",
           timeStudied: doc.data().timeStudied || 0,
           photoUrl: doc.data().photoUrl || "/placeholder.svg",
         }));
@@ -92,6 +94,7 @@ export default function Leaderboard() {
             setLoggedInUserData({
               id: user.id,
               name: userData.name || user.fullName || "Anonymous",
+              username: userData.username || user.username || "",
               timeStudied: userData.timeStudied || 0,
               photoUrl:
                 userData.photoUrl || user.imageUrl || "/placeholder.svg",
@@ -183,7 +186,7 @@ export default function Leaderboard() {
                     />
                   </div>
                   <div className="ml-4 flex-grow">
-                    <div className="font-semibold">{student.name}</div>
+                    <div className="font-semibold">{student.username || student.name}</div>
                     <div className="text-sm text-gray-500">
                       {formatStudyTime(student.timeStudied)}
                     </div>
@@ -213,7 +216,7 @@ export default function Leaderboard() {
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold">
-                      {loggedInUserData.name}
+                      {loggedInUserData.username || loggedInUserData.name}
                     </div>
                     <div className="text-xl text-gray-500">
                       {formatStudyTime(loggedInUserData.timeStudied)}

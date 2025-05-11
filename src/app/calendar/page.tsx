@@ -7,7 +7,8 @@ import { db } from "../firebase";
 import Header from "@/componets/header/header";
 import Footer from "@/componets/footer/footer";
 import { format, addMinutes, isWithinInterval, startOfDay, endOfDay, startOfWeek, addDays, isSameDay } from "date-fns";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Task {
   id: string;
@@ -36,6 +37,7 @@ export default function CalendarPage() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [viewMode, setViewMode] = useState<"daily" | "weekly">("daily");
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
 
   // Generate time slots for full 24 hours
   const timeSlots = Array.from({ length: 48 }, (_, i) => {
@@ -47,6 +49,7 @@ export default function CalendarPage() {
   useEffect(() => {
     if (user) {
       fetchTasks();
+      fetchCompletedTasks();
     }
   }, [user]);
 
@@ -78,6 +81,19 @@ export default function CalendarPage() {
       console.error("Error fetching tasks:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchCompletedTasks = async () => {
+    if (!user) return;
+    try {
+      const tasksRef = collection(db, `users/${user.id}/completedTasks`);
+      const q = query(tasksRef, orderBy("createdAt", "desc"));
+      const querySnapshot = await getDocs(q);
+      const completed = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Task[];
+      setCompletedTasks(completed);
+    } catch (error) {
+      console.error("Error fetching completed tasks:", error);
     }
   };
 
@@ -162,23 +178,22 @@ export default function CalendarPage() {
     return false;
   };
 
-  const getTasksForTimeSlot = (timeSlot: string) => {
+  const getTasksForDayAndTimeSlot = (day: Date, timeSlot: string) => {
     const [hours, minutes] = timeSlot.split(":").map(Number);
-    return tasks.filter(task => {
+    const slotStart = new Date(day);
+    slotStart.setHours(hours, minutes, 0, 0);
+    const slotEnd = new Date(slotStart);
+    slotEnd.setMinutes(slotEnd.getMinutes() + 30);
+    const allTasks = [...tasks, ...completedTasks];
+    return allTasks.filter(task => {
       if (!task.dueDate) return false;
       const taskDate = new Date(task.dueDate);
-      // Build a date for the slot in local time
-      const slotDate = new Date(selectedDate);
-      slotDate.setHours(hours, minutes, 0, 0);
-      // Debug output
-      // Remove or comment out after confirming fix
-      // console.log('Task:', task.name, 'TaskDate:', taskDate, 'SlotDate:', slotDate);
       return (
-        taskDate.getFullYear() === slotDate.getFullYear() &&
-        taskDate.getMonth() === slotDate.getMonth() &&
-        taskDate.getDate() === slotDate.getDate() &&
-        taskDate.getHours() === slotDate.getHours() &&
-        taskDate.getMinutes() === slotDate.getMinutes()
+        taskDate >= slotStart &&
+        taskDate < slotEnd &&
+        taskDate.getFullYear() === slotStart.getFullYear() &&
+        taskDate.getMonth() === slotStart.getMonth() &&
+        taskDate.getDate() === slotStart.getDate()
       );
     });
   };
@@ -194,10 +209,57 @@ export default function CalendarPage() {
     return format(date, "h:mm a");
   };
 
+  // Helper to get the earliest and latest due times for the current view
+  const getRelevantTimeSlots = () => {
+    let relevantTasks: Task[] = [];
+    if (viewMode === "weekly") {
+      const weekDays = getWeekDays();
+      relevantTasks = tasks.filter(task =>
+        weekDays.some(day => {
+          const taskDate = task.dueDate ? new Date(task.dueDate) : null;
+          return taskDate && isSameDay(taskDate, day);
+        })
+      );
+    } else {
+      relevantTasks = tasks.filter(task => {
+        const taskDate = task.dueDate ? new Date(task.dueDate) : null;
+        return taskDate && isSameDay(taskDate, selectedDate);
+      });
+    }
+    if (relevantTasks.length === 0) return timeSlots;
+    const times = relevantTasks.map(task => {
+      const d = new Date(task.dueDate!);
+      return d.getHours() * 60 + d.getMinutes();
+    });
+    const minTime = Math.min(...times);
+    const maxTime = Math.max(...times);
+    // Find the closest slot before minTime and after maxTime
+    let startIdx = 0;
+    let endIdx = timeSlots.length - 1;
+    for (let i = 0; i < timeSlots.length; i++) {
+      const [h, m] = timeSlots[i].split(":").map(Number);
+      const mins = h * 60 + m;
+      if (mins <= minTime) startIdx = i;
+      if (mins >= maxTime && endIdx === timeSlots.length - 1) endIdx = i;
+    }
+    return timeSlots.slice(startIdx, endIdx + 1);
+  };
+
+  // Helper to check if a task is overdue
+  const isTaskOverdue = (task: Task) => {
+    if (!task.dueDate) return false;
+    return new Date(task.dueDate) < new Date();
+  };
+
+  // Helper to check if a task is completed
+  const isTaskCompleted = (task: Task) => {
+    return completedTasks.some(t => t.id === task.id);
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
-      <main className="flex-1 container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-2 md:px-4 py-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-gray-900">Calendar</h1>
@@ -234,7 +296,9 @@ export default function CalendarPage() {
               <ChevronLeft className="w-6 h-6" />
             </button>
             <h2 className="text-xl font-semibold">
-              {format(selectedDate, "MMMM d, yyyy")}
+              {viewMode === "weekly"
+                ? `${format(startOfWeek(selectedDate), "MMM d")} - ${format(addDays(startOfWeek(selectedDate), 6), "MMM d, yyyy")}`
+                : format(selectedDate, "MMMM d, yyyy")}
             </h2>
             <button
               onClick={() => setSelectedDate(addDays(selectedDate, 1))}
@@ -244,84 +308,145 @@ export default function CalendarPage() {
             </button>
           </div>
 
-          {/* Calendar Grid */}
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-            {/* Time Slots Header */}
-            <div className="grid grid-cols-[100px_1fr] border-b">
-              <div className="p-2 font-medium text-gray-500">Time</div>
-              <div className="p-2 font-medium text-gray-500">Tasks</div>
+          {(isLoading || !user) && (
+            <div className="flex justify-center items-center py-16">
+              <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
             </div>
-
-            {/* Time Slots Grid */}
-            <div className="divide-y max-h-[calc(100vh-300px)] overflow-y-auto">
-              {timeSlots.map((timeSlot) => {
-                const tasksInSlot = getTasksForTimeSlot(timeSlot);
-                const isCurrentHour = new Date().getHours() === parseInt(timeSlot.split(":")[0]);
-                
-                return (
-                  <div 
-                    key={timeSlot} 
-                    className={`grid grid-cols-[100px_1fr] min-h-[60px] ${
-                      isCurrentHour ? "bg-blue-50" : ""
-                    }`}
-                  >
-                    <div className="p-2 text-sm text-gray-500 border-r flex items-center">
-                      <span className="font-medium">{formatTimeDisplay(timeSlot)}</span>
-                    </div>
-                    <div className="p-2">
-                      {tasksInSlot.map(task => (
-                        <div
-                          key={task.id}
-                          className="mb-2 last:mb-0 bg-blue-50 p-3 rounded-md border border-blue-200 hover:shadow-md transition-shadow"
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="font-medium text-blue-900">{task.name}</div>
-                              {/* Tags */}
-                              {task.tags && task.tags.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mt-1 mb-1">
-                                  {task.tags.map(tag => (
-                                    <span key={tag} className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">{tag}</span>
-                                  ))}
+          )}
+          {!isLoading && user && tasks.length === 0 && completedTasks.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+              <CalendarIcon className="h-12 w-12 mb-2" />
+              <div className="text-lg font-semibold">No tasks or completed tasks for this period.</div>
+              <div className="text-sm">Add a task to get started!</div>
+            </div>
+          )}
+          {!isLoading && user && (tasks.length > 0 || completedTasks.length > 0) && (
+            <AnimatePresence>
+              {viewMode === "weekly" ? (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} transition={{ duration: 0.3 }} className="bg-white rounded-lg shadow-lg overflow-x-auto">
+                  <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b sticky top-0 bg-white z-10">
+                    <div className="p-2 font-medium text-gray-500 border-r">Time</div>
+                    {getWeekDays().map((day, idx) => (
+                      <div key={idx} className={`p-2 font-medium text-center text-gray-700 border-r ${isSameDay(day, new Date()) ? "bg-blue-50 text-blue-700" : ""}`}>
+                        {format(day, "EEE d")}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
+                    {getRelevantTimeSlots().map((timeSlot, rowIdx) => (
+                      <div key={timeSlot} className="grid grid-cols-[80px_repeat(7,1fr)] min-h-[48px] border-b hover:bg-gray-50">
+                        <div className="p-2 text-xs text-gray-500 border-r sticky left-0 bg-white z-10 font-medium flex items-center justify-end">
+                          {formatTimeDisplay(timeSlot)}
+                        </div>
+                        {getWeekDays().map((day, colIdx) => {
+                          const tasksInSlot = getTasksForDayAndTimeSlot(day, timeSlot);
+                          const isCurrentSlot = isSameDay(day, new Date()) && new Date().getHours() === parseInt(timeSlot.split(":")[0]);
+                          return (
+                            <div key={colIdx} className={`p-1 md:p-2 border-r min-h-[48px] ${isCurrentSlot ? "bg-blue-50" : ""}`}> 
+                              {tasksInSlot.map(task => (
+                                <div
+                                  key={task.id}
+                                  className={`mb-1 p-2 rounded-md border transition-shadow text-xs md:text-sm flex items-center justify-between
+                                    ${isTaskCompleted(task)
+                                      ? "bg-green-100 border-green-200 text-green-900 opacity-80 line-through"
+                                      : "bg-blue-100 border-blue-200 hover:shadow-md"}
+                                    ${isTaskOverdue(task) ? "opacity-60 line-through" : ""}`}
+                                >
+                                  <div>
+                                    <div className="font-semibold truncate flex items-center gap-1">
+                                      {task.name}
+                                      {isTaskCompleted(task) && <span className="ml-1 text-green-600">✔</span>}
+                                    </div>
+                                    {task.tags && task.tags.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mt-1 mb-1">
+                                        {task.tags.map(tag => (
+                                          <span key={tag} className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-200 text-blue-800 border border-blue-300">{tag}</span>
+                                        ))}
+                                      </div>
+                                    )}
+                                    <div className="text-[10px] text-blue-600 mt-1">
+                                      Due: {format(new Date(task.dueDate!), "h:mm a")}
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
+                                      <div
+                                        className="bg-blue-600 h-1 rounded-full transition-all duration-300"
+                                        style={{ width: `${(task.completedSessions / task.totalSessions) * 100}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                  {isTaskOverdue(task) && (
+                                    <button className="ml-2 px-2 py-1 text-xs bg-yellow-200 text-yellow-800 rounded hover:bg-yellow-300 border border-yellow-300">Reschedule</button>
+                                  )}
                                 </div>
-                              )}
-                              <div className="text-xs text-blue-600 mt-1">
-                                Due: {format(new Date(task.dueDate!), "h:mm a")}
-                              </div>
-                              {task.duration && (
-                                <div className="text-xs text-gray-500 mt-1">
-                                  Duration: {task.duration} minutes
-                                </div>
-                              )}
+                              ))}
                             </div>
-                            <div className="flex flex-col items-end ml-4">
-                              <div className="text-sm font-semibold text-blue-700">
-                                {getRemainingSessions(task)} sessions left
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {task.completedSessions}/{task.totalSessions} completed
-                              </div>
-                              <div className="text-xs text-gray-500 mt-1">
-                                {Math.round((task.completedSessions / task.totalSessions) * 100)}% done
-                              </div>
-                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} transition={{ duration: 0.3 }} className="bg-white rounded-lg shadow-lg overflow-hidden">
+                  <div className="grid grid-cols-[80px_1fr] border-b sticky top-0 bg-white z-10">
+                    <div className="p-2 font-medium text-gray-500">Time</div>
+                    <div className="p-2 font-medium text-gray-500">Tasks</div>
+                  </div>
+                  <div className="divide-y max-h-[calc(100vh-300px)] overflow-y-auto">
+                    {getRelevantTimeSlots().map((timeSlot) => {
+                      const tasksInSlot = getTasksForDayAndTimeSlot(selectedDate, timeSlot);
+                      const isCurrentHour = new Date().getHours() === parseInt(timeSlot.split(":")[0]);
+                      return (
+                        <div key={timeSlot} className={`grid grid-cols-[80px_1fr] min-h-[48px] border-b hover:bg-gray-50 ${isCurrentHour ? "bg-blue-50" : ""}`}>
+                          <div className="p-2 text-xs text-gray-500 border-r font-medium flex items-center justify-end">
+                            {formatTimeDisplay(timeSlot)}
                           </div>
-                          <div className="mt-2 w-full bg-gray-200 rounded-full h-1.5">
-                            <div
-                              className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
-                              style={{
-                                width: `${(task.completedSessions / task.totalSessions) * 100}%`,
-                              }}
-                            />
+                          <div className="p-2">
+                            {tasksInSlot.map(task => (
+                              <div
+                                key={task.id}
+                                className={`mb-2 p-2 rounded-md border transition-shadow text-xs md:text-sm flex items-center justify-between
+                                  ${isTaskCompleted(task)
+                                    ? "bg-green-100 border-green-200 text-green-900 opacity-80 line-through"
+                                    : "bg-blue-100 border-blue-200 hover:shadow-md"}
+                                  ${isTaskOverdue(task) ? "opacity-60 line-through" : ""}`}
+                              >
+                                <div>
+                                  <div className="font-semibold truncate flex items-center gap-1">
+                                    {task.name}
+                                    {isTaskCompleted(task) && <span className="ml-1 text-green-600">✔</span>}
+                                  </div>
+                                  {task.tags && task.tags.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1 mb-1">
+                                      {task.tags.map(tag => (
+                                        <span key={tag} className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-200 text-blue-800 border border-blue-300">{tag}</span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <div className="text-[10px] text-blue-600 mt-1">
+                                    Due: {format(new Date(task.dueDate!), "h:mm a")}
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
+                                    <div
+                                      className="bg-blue-600 h-1 rounded-full transition-all duration-300"
+                                      style={{ width: `${(task.completedSessions / task.totalSessions) * 100}%` }}
+                                    />
+                                  </div>
+                                </div>
+                                {isTaskOverdue(task) && (
+                                  <button className="ml-2 px-2 py-1 text-xs bg-yellow-200 text-yellow-800 rounded hover:bg-yellow-300 border border-yellow-300">Reschedule</button>
+                                )}
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
-          </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          )}
         </div>
       </main>
       <Footer />
