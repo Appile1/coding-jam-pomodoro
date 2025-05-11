@@ -1,12 +1,18 @@
-// middleware.ts (SAFE MODE TEST)
+import { authMiddleware } from "@clerk/nextjs";
 
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+export default authMiddleware({
+  publicRoutes: ["/", "/signin", "/signup", "/generate"],
 
-export function middleware(req: NextRequest) {
-  console.log("Middleware is alive 👻", req.nextUrl.pathname);
-  return NextResponse.next();
-}
+  // Optional: force redirect to /signin for non-authenticated users
+  afterAuth(auth, req, evt) {
+    if (!auth.userId && !auth.isPublicRoute) {
+      const signinUrl = new URL("/signin", req.url);
+      return Response.redirect(signinUrl);
+    }
+
+    return null; // allow to continue
+  },
+});
 
 export const config = {
   matcher: [
