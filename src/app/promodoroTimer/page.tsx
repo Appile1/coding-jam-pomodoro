@@ -315,7 +315,6 @@ export default function PomodoroTimer() {
           ...prevTimers,
           [mode]: prevTimers[mode] - 1,
         }));
-
         if (mode === TIMER_MODES.POMODORO) {
           setTimeStudied((prevTime) => {
             const newTime = prevTime + 1;
@@ -327,7 +326,6 @@ export default function PomodoroTimer() {
     } else if (timers[mode] === 0) {
       setIsActive(false);
       playSound();
-      
       // Send notifications
       if (mode === TIMER_MODES.POMODORO) {
         sendNotification(

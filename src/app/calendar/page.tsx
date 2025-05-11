@@ -94,7 +94,6 @@ export default function CalendarPage() {
 
       tasksData.forEach(task => {
         if (task.completedSessions >= task.totalSessions) return;
-        
         const remainingSessions = task.totalSessions - task.completedSessions;
         const dueDate = task.dueDate ? new Date(task.dueDate) : null;
 
@@ -102,32 +101,26 @@ export default function CalendarPage() {
           // Add focus session
           const focusStart = new Date(currentTime);
           const focusEnd = addMinutes(focusStart, 25);
-
           if (dueDate && focusEnd > dueDate) break;
-
           blocks.push({
             startTime: focusStart,
             endTime: focusEnd,
             task,
             type: "focus"
           });
-
           // Add break session
           const breakStart = focusEnd;
           const breakEnd = addMinutes(breakStart, 5);
-
           blocks.push({
             startTime: breakStart,
             endTime: breakEnd,
             task,
             type: "break"
           });
-
           currentTime = breakEnd;
         }
       });
     });
-
     setTimeBlocks(blocks);
   };
 

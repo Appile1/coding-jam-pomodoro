@@ -1,17 +1,20 @@
+// app/api/chatai/route.js
+
 import OpenAI from "openai";
 
 const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
-  apiKey:
-    "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",
+  apiKey: process.env.OPENROUTER_API_KEY,
 });
 
 export async function POST(req) {
   try {
     const body = await req.json();
+
     const completion = await openai.chat.completions.create({
       model: "meta-llama/llama-3.1-8b-instruct:free",
       messages: body.messages,
+      stream: false, // Important to avoid hanging
     });
 
     return new Response(
@@ -22,10 +25,10 @@ export async function POST(req) {
       }
     );
   } catch (error) {
-    console.error("Error:", error); // Log the actual error to the console
+    console.error("AI API Error:", error);
     return new Response(
       JSON.stringify({
-        error: "Error fetching completion",
+        error: "Error fetching AI response",
         details: error.message,
       }),
       {
@@ -35,3 +38,4 @@ export async function POST(req) {
     );
   }
 }
+ 

@@ -71,14 +71,16 @@ export default function Header() {
             <div className="relative w-12 h-12 overflow-hidden rounded-full shadow-md group-hover:shadow-lg transition-shadow duration-300">
               <Image
                 src="/title.png"
-                alt="Logo"
-                layout="fill"
-                objectFit="cover"
+                alt="FocusFlow Logo"
+                width={48}
+                height={48}
+                sizes="48px"
                 className="transition-transform duration-300 group-hover:scale-105"
+                priority
               />
             </div>
             <span className="text-gray-800 text-xl font-bold group-hover:text-blue-600 transition-colors duration-300">
-              ProductivityPro
+              FocusFlow
             </span>
           </Link>
 
